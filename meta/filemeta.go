@@ -4,7 +4,7 @@ import (
 	mydb "FileStore-Server/db"
 )
 
-// FileMeta: ÎÄ¼şÔªĞÅÏ¢½á¹¹
+// FileMeta: æ–‡ä»¶å…ƒä¿¡æ¯ç»“æ„
 type FileMeta struct {
 	FileSha1 string
 	FileName string
@@ -13,46 +13,46 @@ type FileMeta struct {
 	UploadAt string
 }
 
-// fileMetas: ÒÔÎÄ¼ş¹şÏ£ÖµÎªkey£¬ÎÄ¼şÔªĞÅÏ¢½á¹¹ÌåÎªvalue
+// fileMetas: ä»¥æ–‡ä»¶å“ˆå¸Œå€¼ä¸ºkeyï¼Œæ–‡ä»¶å…ƒä¿¡æ¯ç»“æ„ä½“ä¸ºvalue
 var fileMetas map[string]FileMeta
 
-func init()  {
+func init() {
 	fileMetas = make(map[string]FileMeta)
 }
 
-// UpdateFileMeta: ĞÂÔö/¸üĞÂÎÄ¼şÔªĞÅÏ¢
-func UpdateFileMeta(fMeta FileMeta)  {
+// UpdateFileMeta: æ–°å¢/æ›´æ–°æ–‡ä»¶å…ƒä¿¡æ¯
+func UpdateFileMeta(fMeta FileMeta) {
 	fileMetas[fMeta.FileSha1] = fMeta
 }
 
-// UpdateFileMetaDB: ĞÂÔö/¸üĞÂÔªĞÅÏ¢µ½mysqlÖĞ
-func UpdateFileMetaDB(fmeta FileMeta) bool{
-	return mydb.OnFileUploadFinished(fmeta.FileSha1,fmeta.FileName,fmeta.FileSize,fmeta.Location)
+// UpdateFileMetaDB: æ–°å¢/æ›´æ–°å…ƒä¿¡æ¯åˆ°mysqlä¸­
+func UpdateFileMetaDB(fmeta FileMeta) bool {
+	return mydb.OnFileUploadFinished(fmeta.FileSha1, fmeta.FileName, fmeta.FileSize, fmeta.Location)
 }
 
-// UpdateFileMetaDB: ´ÓmysqlÖĞ»ñÈ¡ÎÄ¼şÔªĞÅÏ¢
-func GetFileMetaDB(fileSha1 string) (FileMeta,error){
-	tfile,err := mydb.GetFileMeta(fileSha1)
+// UpdateFileMetaDB: ä»mysqlä¸­è·å–æ–‡ä»¶å…ƒä¿¡æ¯
+func GetFileMetaDB(fileSha1 string) (*FileMeta, error) {
+	tfile, err := mydb.GetFileMeta(fileSha1)
 	if err != nil {
-		return FileMeta{},err
+		return &FileMeta{}, err
 	}
 
 	fmeta := FileMeta{
-		FileSha1:tfile.FileHash,
-		FileName:tfile.FileName.String,
-		FileSize:tfile.FileSize.Int64,
-		Location:tfile.FileAddr.String,
+		FileSha1: tfile.FileHash,
+		FileName: tfile.FileName.String,
+		FileSize: tfile.FileSize.Int64,
+		Location: tfile.FileAddr.String,
 	}
 
-	return fmeta,nil
+	return &fmeta, nil
 }
 
-// GetFileMeta: Í¨¹ısha1»ñÈ¡ÎÄ¼şÔªĞÅÏ¢¶ÔÏó
+// GetFileMeta: é€šè¿‡sha1è·å–æ–‡ä»¶å…ƒä¿¡æ¯å¯¹è±¡
 func GetFileMeta(fileSha1 string) FileMeta {
 	return fileMetas[fileSha1]
 }
 
-// RemoveFileMeta: É¾³ıÔªĞÅÏ¢
-func RemoveFileMeta(fileSha1 string)  {
-	delete(fileMetas,fileSha1)
+// RemoveFileMeta: åˆ é™¤å…ƒä¿¡æ¯
+func RemoveFileMeta(fileSha1 string) {
+	delete(fileMetas, fileSha1)
 }

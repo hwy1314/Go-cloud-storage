@@ -6,19 +6,19 @@ import (
 	"time"
 )
 
-//UserFile: ÓÃ»§ÎÄ¼ş±í½á¹¹Ìå
+// UserFile: ç”¨æˆ·æ–‡ä»¶è¡¨ç»“æ„ä½“
 type UserFile struct {
-	UserName string
-	FileHash string
-	FileName string
-	FileSize int64
-	UploadAt string
+	UserName    string
+	FileHash    string
+	FileName    string
+	FileSize    int64
+	UploadAt    string
 	LastUpdated string
 }
 
-//OnUserFileUploadFinished: ¸üĞÂÓÃ»§ÎÄ¼ş±í
-func OnUserFileUploadFinished(username,filehash,filename string,filesize int64) bool {
-	stmt,err := mydb.DBConn().Prepare(
+// OnUserFileUploadFinished: æ›´æ–°ç”¨æˆ·æ–‡ä»¶è¡¨
+func OnUserFileUploadFinished(username, filehash, filename string, filesize int64) bool {
+	stmt, err := mydb.DBConn().Prepare(
 		"insert ignore into tbl_user_file (`user_name`,`file_sha1`,`file_name`," +
 			"`file_size`,`upload_at`) values (?,?,?,?,?)")
 	defer stmt.Close()
@@ -27,10 +27,41 @@ func OnUserFileUploadFinished(username,filehash,filename string,filesize int64) 
 		return false
 	}
 
-	_,err = stmt.Exec(username,filehash,filename,filesize,time.Now())
+	_, err = stmt.Exec(username, filehash, filename, filesize, time.Now())
 	if err != nil {
 		fmt.Println(err.Error())
 		return false
 	}
 	return true
+}
+
+// QueryUserFileMetas: æ‰¹é‡è·å–ç”¨æˆ·æ–‡ä»¶ä¿¡æ¯
+func QueryUserFileMetas(username string, limit int) ([]UserFile, error) {
+	stmt, err := mydb.DBConn().Prepare(
+		"select file_sha1,file_name,file_size,upload_at,last_update from" +
+			" tbl_user_file where user_name=? limit ?")
+	defer stmt.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := stmt.Query(username, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	var userFiles []UserFile
+	for rows.Next() {
+		ufile := UserFile{}
+		err = rows.Scan(&ufile.FileHash, &ufile.FileName, &ufile.FileSize,
+			&ufile.UploadAt, &ufile.LastUpdated)
+		if err != nil {
+			fmt.Println(err.Error())
+			break
+		}
+
+		userFiles = append(userFiles, ufile)
+	}
+
+	return userFiles, nil
 }

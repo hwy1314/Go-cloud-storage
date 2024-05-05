@@ -1,25 +1,25 @@
 package handler
 
 import (
+	dblayer "FileStore-Server/db"
 	"FileStore-Server/util"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	dblayer "FileStore-Server/db"
 	"time"
 )
 
 const (
-	//ÓÃÓÚ¼ÓÃÜµÄÑÎÖµ(×Ô¶¨Òå)
+	//ç”¨äºåŠ å¯†çš„ç›å€¼(è‡ªå®šä¹‰)
 	pwdSalt = "*#890"
 )
 
-//SignupHandler : ´¦ÀíÓÃ»§×¢²áÇëÇó
-func SignupHandler(w http.ResponseWriter,r *http.Request) {
-	//GET: Ò³ÃæÇëÇó
+// SignupHandler : å¤„ç†ç”¨æˆ·æ³¨å†Œè¯·æ±‚
+func SignupHandler(w http.ResponseWriter, r *http.Request) {
+	//GET: é¡µé¢è¯·æ±‚
 	if r.Method == http.MethodGet {
-		data,err := ioutil.ReadFile("./static/view/signup.html")
+		data, err := ioutil.ReadFile("./static/view/signup.html")
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -28,7 +28,7 @@ func SignupHandler(w http.ResponseWriter,r *http.Request) {
 		return
 	}
 
-	//POST: Êı¾İÇëÇó
+	//POST: æ•°æ®è¯·æ±‚
 	if r.Method == http.MethodPost {
 		r.ParseForm()
 		username := r.Form.Get("username")
@@ -39,19 +39,19 @@ func SignupHandler(w http.ResponseWriter,r *http.Request) {
 			return
 		}
 
-		//¶ÔÃÜÂë½øĞĞ¼ÓÑÎ¼°È¡Sha1Öµ¼ÓÃÜ
-		encPasswd := util.Sha1([]byte(passwd+pwdSalt))
-		ok := dblayer.UserSignUp(username,encPasswd)
+		//å¯¹å¯†ç è¿›è¡ŒåŠ ç›åŠå–Sha1å€¼åŠ å¯†
+		encPasswd := util.Sha1([]byte(passwd + pwdSalt))
+		ok := dblayer.UserSignUp(username, encPasswd)
 		if ok {
 			w.Write([]byte("SUCCESS"))
-		}else {
+		} else {
 			w.Write([]byte("FAILED"))
 		}
 	}
 }
 
-//SignInHandler: µÇÂ¼½Ó¿Ú
-func SignInHandler(w http.ResponseWriter,r *http.Request) {
+// SignInHandler: ç™»å½•æ¥å£
+func SignInHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		http.Redirect(w, r, "/static/view/signin.html", http.StatusFound)
 		return
@@ -61,84 +61,87 @@ func SignInHandler(w http.ResponseWriter,r *http.Request) {
 	username := r.Form.Get("username")
 	password := r.Form.Get("password")
 
-	//1.Ğ£ÑéÓÃ»§ÃûÓëÃÜÂë
+	//1.æ ¡éªŒç”¨æˆ·åä¸å¯†ç 
 	encPasswd := util.Sha1([]byte(password + pwdSalt))
-	pwdChecked := dblayer.UserSignin(username,encPasswd)
+	pwdChecked := dblayer.UserSignin(username, encPasswd)
 	if !pwdChecked {
 		w.Write([]byte("FAILED"))
 		return
 	}
 
-	//2.Éú³ÉÓÃ»§·ÃÎÊÆ¾Ö¤Token
+	//2.ç”Ÿæˆç”¨æˆ·è®¿é—®å‡­è¯Token
 	token := GenToken(username)
-	upRes := dblayer.UpdateToken(username,token)
+	upRes := dblayer.UpdateToken(username, token)
 	if !upRes {
-		fmt.Println("¸üĞÂ·ÃÎÊÆ¾Ö¤Ê§°Ü")
+		fmt.Println("æ›´æ–°è®¿é—®å‡­è¯å¤±è´¥")
 		w.Write([]byte("FAILED"))
 		return
 	}
 
-	//3.·â×°Æ¾Ö¤ÓëÏìÓ¦ĞÅÏ¢¸ø¿Í»§¶Ë
+	//3.å°è£…å‡­è¯ä¸å“åº”ä¿¡æ¯ç»™å®¢æˆ·ç«¯
 	resp := util.RespMsg{
-		Code:0,
-		Msg:"OK",
+		Code: 0,
+		Msg:  "OK",
 		Data: struct {
-			Location	string
-			Username	string
-			Token		string
+			Location string
+			Username string
+			Token    string
 		}{
-			Location:"http://"+r.Host+"/static/view/home.html",
-			Username:username,
-			Token:token,
+			Location: "http://" + r.Host + "/static/view/home.html",
+			Username: username,
+			Token:    token,
 		},
 	}
 	w.Write(resp.JSONBytes())
 }
 
-//UserInfoHandler: ²éÑ¯ÓÃ»§ĞÅÏ¢
-func UserInfoHandler(w http.ResponseWriter,r *http.Request) {
-	//1.½âÎöÇëÇó²ÎÊı
+// UserInfoHandler: æŸ¥è¯¢ç”¨æˆ·ä¿¡æ¯
+func UserInfoHandler(w http.ResponseWriter, r *http.Request) {
+	//1.è§£æè¯·æ±‚å‚æ•°
 	r.ParseForm()
 	username := r.Form.Get("username")
 
-	//ÒÔÏÂ¹¦ÄÜÒÑ¾­·ÅÈëÀ¹½ØÆ÷ÖĞ
-	////2.ÑéÖ¤TokenÊÇ·ñÓĞĞ§
+	//ä»¥ä¸‹åŠŸèƒ½å·²ç»æ”¾å…¥æ‹¦æˆªå™¨ä¸­
+	////2.éªŒè¯Tokenæ˜¯å¦æœ‰æ•ˆ
 	//isValidToken := IsTokenValid(token)
 	//if !isValidToken {
 	//	w.WriteHeader(http.StatusForbidden)
 	//	return
 	//}
 
-	//3.²éÑ¯ÓÃ»§ĞÅÏ¢
-	user,err := dblayer.GetUserInfo(username)
+	//3.æŸ¥è¯¢ç”¨æˆ·ä¿¡æ¯
+	user, err := dblayer.GetUserInfo(username)
 	if err != nil {
 		log.Println(err.Error())
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	//4.×é×°²¢ÏìÓ¦ÓÃ»§Êı¾İ
+	//4.ç»„è£…å¹¶å“åº”ç”¨æˆ·æ•°æ®
 	resp := util.RespMsg{
-		Code:0,
-		Msg:"OK",
-		Data:user,
+		Code: 0,
+		Msg:  "OK",
+		Data: user,
 	}
 	w.Write(resp.JSONBytes())
 }
 
-//GenToken: Éú³É40Î»token
+// GenToken: ç”Ÿæˆ40ä½token
 func GenToken(username string) string {
-	//40Î»token: md5(username + timestamp(Ê±¼ä´Á) + token_salt) + timestamp[:8]
-	ts := fmt.Sprint("%x",time.Now().Unix())
-	tokenPrefix := util.MD5([]byte(username+ts+"_tokensalt"))
+	//40ä½token: md5(username + timestamp(æ—¶é—´æˆ³) + token_salt) + timestamp[:8]
+	ts := fmt.Sprint("%x", time.Now().Unix())
+	tokenPrefix := util.MD5([]byte(username + ts + "_tokensalt"))
 	return tokenPrefix + ts[:8]
 }
 
-//IsTokenValid: ÑéÖ¤tokenÊÇ·ñÊ§Ğ§
+// IsTokenValid: éªŒè¯tokenæ˜¯å¦å¤±æ•ˆ
 func IsTokenValid(token string) bool {
 	if len(token) != 40 {
-		fmt.Println("token³¤¶ÈÒì³£")
+		fmt.Println("tokené•¿åº¦å¼‚å¸¸")
 		return false
 	}
+	// TODO: åˆ¤æ–­tokençš„æ—¶æ•ˆæ€§ï¼Œæ˜¯å¦è¿‡æœŸ
+	// TODO: ä»æ•°æ®åº“è¡¨tbl_user_tokenæŸ¥è¯¢usernameå¯¹åº”çš„tokenä¿¡æ¯
+	// TODO: å¯¹æ¯”ä¸¤ä¸ªtokenæ˜¯å¦ä¸€è‡´
 	return true
 }

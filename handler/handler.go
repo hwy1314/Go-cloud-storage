@@ -10,96 +10,94 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
-//UploadHandler: ÎÄ¼şÉÏ´«Â·ÓÉ
-func UploadHandler(w http.ResponseWriter,r *http.Request)  {
+// UploadHandler: æ–‡ä»¶ä¸Šä¼ 
+func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		//·µ»ØÉÏ´«ÎÄ¼şµÄhtmlÒ³Ãæ
-		data,err := ioutil.ReadFile("./static/view/index.html")
+		//è¿”å›ä¸Šä¼ æ–‡ä»¶çš„htmlé¡µé¢
+		data, err := ioutil.ReadFile("./static/view/index.html")
 
 		if err != nil {
-			io.WriteString(w,fmt.Sprint("internel server error: err: %s",err.Error()))
+			io.WriteString(w, fmt.Sprint("internel server error: err: %s", err.Error()))
 			return
 		}
-		io.WriteString(w,string(data))
-	}else if r.Method == "POST" {
-		//½ÓÊÕÎÄ¼şÁ÷¼°´æ´¢µ½±¾µØÄ¿Â¼
-
-		//»ñÈ¡±íµ¥ÉÏ´«µÄÎÄ¼ş£¬²¢´ò¿ª
-		file,head,err := r.FormFile("file")
+		io.WriteString(w, string(data))
+	} else if r.Method == "POST" { //æ¥æ”¶æ–‡ä»¶æµåŠå­˜å‚¨åˆ°æœ¬åœ°ç›®å½•
+		//è·å–è¡¨å•ä¸Šä¼ çš„æ–‡ä»¶ï¼Œå¹¶æ‰“å¼€
+		file, head, err := r.FormFile("file")
 		defer file.Close()
 		if err != nil {
-			fmt.Printf("Failed to get data, err: %s\n",err.Error())
+			fmt.Printf("Failed to get data, err: %s\n", err.Error())
 			return
 		}
 
-		//´´½¨ÎÄ¼şÔªĞÅÏ¢ÊµÀı
+		//åˆ›å»ºæ–‡ä»¶å…ƒä¿¡æ¯å®ä¾‹
 		fileMeta := meta.FileMeta{
-			FileName:head.Filename,
-			Location:"./static/tempFiles/"+head.Filename,
-			UploadAt:time.Now().Format("2006-01-02 15:04:05"),
+			FileName: head.Filename,
+			Location: "./static/tempFiles/" + head.Filename,
+			UploadAt: time.Now().Format("2006-01-02 15:04:05"),
 		}
 
-		//´´½¨±¾µØÎÄ¼ş
-		localFile,err := os.Create(fileMeta.Location)
+		//åˆ›å»ºæœ¬åœ°æ–‡ä»¶
+		localFile, err := os.Create(fileMeta.Location)
 		defer localFile.Close()
 		if err != nil {
-			fmt.Printf("Failed to create file, err: %s\n",err.Error())
+			fmt.Printf("Failed to create file, err: %s\n", err.Error())
 			return
 		}
 
-		//¸´ÖÆÎÄ¼şĞÅÏ¢µ½±¾µØÎÄ¼ş
-		fileMeta.FileSize,err = io.Copy(localFile,file)
+		//å¤åˆ¶æ–‡ä»¶ä¿¡æ¯åˆ°æœ¬åœ°æ–‡ä»¶
+		fileMeta.FileSize, err = io.Copy(localFile, file)
 		if err != nil {
-			fmt.Printf("Failed to save data into file, err: %s\n",err.Error())
+			fmt.Printf("Failed to save data into file, err: %s\n", err.Error())
 			return
 		}
 
-		//¼ÆËãÎÄ¼ş¹şÏ£Öµ
-		localFile.Seek(0,0)
+		//è®¡ç®—æ–‡ä»¶å“ˆå¸Œå€¼
+		localFile.Seek(0, 0)
 		fileMeta.FileSha1 = util.FileSha1(localFile)
-		//½«ÎÄ¼şÔªĞÅÏ¢Ìí¼Óµ½mysqlÖĞ
-		meta.UpdateFileMetaDB(fileMeta)
 
-		//¸üĞÂÓÃ»§ÎÄ¼ş±í¼ÇÂ¼
+		//å°†æ–‡ä»¶å…ƒä¿¡æ¯æ·»åŠ åˆ°mysqlä¸­
+		_ = meta.UpdateFileMetaDB(fileMeta)
+
+		//æ›´æ–°ç”¨æˆ·æ–‡ä»¶è¡¨è®°å½•
 		r.ParseForm()
 		username := r.Form.Get("username")
-		ok := db.OnUserFileUploadFinished(username,fileMeta.FileSha1,fileMeta.FileName,fileMeta.FileSize)
+		ok := db.OnUserFileUploadFinished(username, fileMeta.FileSha1, fileMeta.FileName, fileMeta.FileSize)
 		if ok {
-			http.Redirect(w,r,"/static/view/home.html",http.StatusFound)
-		}else {
+			//é‡å®šå‘è‡³ä¸Šä¼ æˆåŠŸé¡µé¢
+			http.Redirect(w, r, "/static/view/home.html", http.StatusFound)
+		} else {
 			w.Write([]byte("Upload Failed"))
 		}
 
 		//log
-		fmt.Printf("Your file's meta is: %s\n",fileMeta)
-
-		//ÖØ¶¨ÏòÖÁÉÏ´«³É¹¦Ò³Ãæ
-		http.Redirect(w,r,"/file/upload/suc",http.StatusFound)
+		fmt.Printf("Your file's meta is: %s\n", fileMeta)
 	}
 }
 
-//UploadSucHandler: ÉÏ´«³É¹¦
-func UploadSucHandler(w http.ResponseWriter,r *http.Request)  {
-	io.WriteString(w,"Upload finished!")
+// UploadSucHandler: ä¸Šä¼ æˆåŠŸ
+func UploadSucHandler(w http.ResponseWriter, r *http.Request) {
+	io.WriteString(w, "Upload finished!")
 }
 
-//GetFileMetaHandler: Í¨¹ıÎÄ¼şhashÖµ£¬»ñÈ¡ÎÄ¼şÔªĞÅÏ¢
-func GetFileMetaHandler(w http.ResponseWriter,r *http.Request)  {
+// GetFileMetaHandler: é€šè¿‡æ–‡ä»¶hashå€¼ï¼Œè·å–æ–‡ä»¶å…ƒä¿¡æ¯
+func GetFileMetaHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
-	//»ñÈ¡hashÖµ£¬²¢Í¨¹ıÆä²éÑ¯ÎÄ¼şÔªĞÅÏ¢
+	//è·å–hashå€¼ï¼Œå¹¶é€šè¿‡å…¶æŸ¥è¯¢æ–‡ä»¶å…ƒä¿¡æ¯
 	filehash := r.Form["filehash"][0]
-	fMeta,err := meta.GetFileMetaDB(filehash)
+	fMeta, err := meta.GetFileMetaDB(filehash)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	//json¸ñÊ½»¯metaÊµÀı
-	data,err := json.Marshal(fMeta)
+	//jsonæ ¼å¼åŒ–metaå®ä¾‹
+	data, err := json.Marshal(fMeta)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -107,40 +105,62 @@ func GetFileMetaHandler(w http.ResponseWriter,r *http.Request)  {
 	w.Write(data)
 }
 
-//DownloadHandler: ¸ù¾İÎÄ¼ş¹şÏ£ÖµÏÂÔØÎÄ¼ş
-func DownloadHandler(w http.ResponseWriter,r *http.Request)  {
+// FileQueryHandler: æŸ¥è¯¢æ‰¹é‡çš„æ–‡ä»¶å…ƒä¿¡æ¯
+func FileQueryHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
-	//»ñÈ¡ÎÄ¼şhashÖµ£¬²¢»ñÈ¡ÔªĞÅÏ¢
-	fileSha1 := r.Form.Get("filehash")
-	fm,err := meta.GetFileMetaDB(fileSha1)
+	limitCnt, _ := strconv.Atoi(r.Form.Get("limit"))
+	username := r.Form.Get("username")
+
+	userFiles, err := db.QueryUserFileMetas(username, limitCnt)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	//¸ù¾İÎÄ¼şÔªĞÅÏ¢´ò¿ª±¾µØÎÄ¼ş
-	f,err := os.Open(fm.Location)
+	data, err := json.Marshal(userFiles)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Write(data)
+}
+
+// DownloadHandler: æ ¹æ®æ–‡ä»¶å“ˆå¸Œå€¼ä¸‹è½½æ–‡ä»¶
+func DownloadHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+
+	//è·å–æ–‡ä»¶hashå€¼ï¼Œå¹¶è·å–å…ƒä¿¡æ¯
+	fileSha1 := r.Form.Get("filehash")
+	fm, err := meta.GetFileMetaDB(fileSha1)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	//æ ¹æ®æ–‡ä»¶å…ƒä¿¡æ¯æ‰“å¼€æœ¬åœ°æ–‡ä»¶
+	f, err := os.Open(fm.Location)
 	defer f.Close()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	//½«±¾µØÎÄ¼ş¶ÁÈëÄÚ´æ
-	data,err := ioutil.ReadAll(f)
+	//å°†æœ¬åœ°æ–‡ä»¶è¯»å…¥å†…å­˜
+	data, err := ioutil.ReadAll(f)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	//ÉèÖÃÏìÓ¦Í·£¬Ğ´ÈëÊı¾İ
-	w.Header().Set("Content-Type","application/octect-stream")
-	w.Header().Set("content-disposition","attachment;filename=\""+fm.FileName+"\"")
+	//è®¾ç½®å“åº”å¤´ï¼Œå†™å…¥æ•°æ®
+	w.Header().Set("Content-Type", "application/octect-stream")
+	// attachmentè¡¨ç¤ºæ–‡ä»¶å°†ä¼šæç¤ºä¸‹è½½åˆ°æœ¬åœ°ï¼Œè€Œä¸æ˜¯ç›´æ¥åœ¨æµè§ˆå™¨ä¸­æ‰“å¼€
+	w.Header().Set("content-disposition", "attachment;filename=\""+fm.FileName+"\"")
 	w.Write(data)
 }
 
-//FileMetaUpdateHandler: ¸üĞÂÎÄ¼şÔªĞÅÏ¢
-func FileMetaUpdateHandler(w http.ResponseWriter,r *http.Request) {
+// FileMetaUpdateHandler: æ›´æ–°æ–‡ä»¶å…ƒä¿¡æ¯
+func FileMetaUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
 	opType := r.Form.Get("op")
@@ -161,7 +181,7 @@ func FileMetaUpdateHandler(w http.ResponseWriter,r *http.Request) {
 	meta.UpdateFileMeta(curFileMeta)
 
 	w.WriteHeader(http.StatusOK)
-	data,err := json.Marshal(curFileMeta)
+	data, err := json.Marshal(curFileMeta)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -170,12 +190,12 @@ func FileMetaUpdateHandler(w http.ResponseWriter,r *http.Request) {
 	w.Write(data)
 }
 
-//FileDeleteHandler: É¾³ıÎÄ¼ş
-func FileDeleteHandler(w http.ResponseWriter,r *http.Request) {
+// FileDeleteHandler: åˆ é™¤æ–‡ä»¶
+func FileDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	fileSha1 := r.Form.Get("filehash")
 
-	//É¾³ı±¾µØÎÄ¼ş
+	//åˆ é™¤æœ¬åœ°æ–‡ä»¶
 	fMeta := meta.GetFileMeta(fileSha1)
 	err := os.Remove(fMeta.Location)
 	if err != nil {
@@ -183,8 +203,52 @@ func FileDeleteHandler(w http.ResponseWriter,r *http.Request) {
 		return
 	}
 
-	//É¾³ıÔªĞÅÏ¢
+	//åˆ é™¤å…ƒä¿¡æ¯
 	meta.RemoveFileMeta(fileSha1)
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func TryFastUploadHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+
+	//è§£æè¯·æ±‚å‚æ•°
+	username := r.Form.Get("username")
+	filehash := r.Form.Get("filehash")
+	filename := r.Form.Get("filename")
+	filesize, _ := strconv.Atoi(r.Form.Get("filesize"))
+
+	//ä»æ–‡ä»¶è¡¨ä¸­æŸ¥è¯¢ç›¸åŒhashçš„æ–‡ä»¶è®°å½•
+	fileMeta, err := meta.GetFileMetaDB(filehash)
+	if err != nil {
+		fmt.Println(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if fileMeta == nil {
+		resp := util.RespMsg{
+			Code: -1,
+			Msg:  "ç§’ä¼ å¤±è´¥ï¼Œè¯·è®¿é—®æ™®é€šä¸Šä¼ æ¥å£",
+		}
+		w.Write(resp.JSONBytes())
+		return
+	}
+
+	ok := db.OnUserFileUploadFinished(username, filehash, filename, int64(filesize))
+	if ok {
+		resp := util.RespMsg{
+			Code: 0,
+			Msg:  "ç§’ä¼ æˆåŠŸ",
+		}
+		w.Write(resp.JSONBytes())
+		return
+	} else {
+		resp := util.RespMsg{
+			Code: -2,
+			Msg:  "ç§’ä¼ å¤±è´¥ï¼Œè¯·ç¨åé‡è¯•æˆ–é€‰æ‹©æ™®é€šä¸Šä¼ ",
+		}
+		w.Write(resp.JSONBytes())
+		return
+	}
 }
