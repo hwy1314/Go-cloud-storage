@@ -13,7 +13,7 @@ var db *sql.DB
 
 func init() {
 	//db, _ = sql.Open("mysql", "root:root@tcp(localhost:3339)/fileserver?charset=utf8")
-	db, _ = sql.Open("mysql", "root:@tcp(:3339)/fileserver?charset=utf8")
+	db, _ = sql.Open("mysql", "root:root@tcp(localhost:3339)/fileserver?charset=utf8")
 	db.SetMaxOpenConns(1000)
 
 	err := db.Ping()
@@ -23,7 +23,7 @@ func init() {
 	}
 }
 
-// DBConn: è¿”å›æ•°æ®åº“è¿æ¥å¯¹è±¡
+// DBConn: ·µ»ØÊı¾İ¿âÁ¬½Ó¶ÔÏó
 func DBConn() *sql.DB {
 	return db
 }
@@ -39,7 +39,7 @@ func ParseRows(rows *sql.Rows) []map[string]interface{} {
 	record := make(map[string]interface{})
 	records := make([]map[string]interface{}, 0)
 	for rows.Next() {
-		//å°†è¡Œæ•°æ®ä¿å­˜åˆ°recordå­—å…¸
+		//½«ĞĞÊı¾İ±£´æµ½record×Öµä
 		err := rows.Scan(scanArgs...)
 		checkErr(err)
 

@@ -1,5 +1,10 @@
 package main
 
+import (
+	"FileStore-Server/handler"
+	"fmt"
+)
+
 //
 //import (
 //	"filestore-server/store/ceph"
@@ -31,3 +36,7 @@ package main
 //	// res, err = bucket.List("", "", "", 100)
 //	// fmt.Printf("object keys: %+v\n", res)
 //}
+
+func main(){
+	fmt.Println(handler.GenToken("hewenye"))
+}
