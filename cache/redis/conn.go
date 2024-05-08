@@ -1,19 +1,19 @@
 package redis
 
 import (
+	cfg "FileStore-Server/config"
 	"fmt"
 	"time"
-
 	"github.com/garyburd/redigo/redis"
 )
 
 var (
 	pool      *redis.Pool
-	redisHost = "47.95.253.230:6380"
-	redisPass = "191250"
+	redisHost = cfg.RedisHost
+	redisPass = cfg.RedisPass
 )
 
-// newRedisPool:
+//newRedisPool:
 func newRedisPool() *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     50,
